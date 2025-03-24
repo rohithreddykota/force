@@ -37,10 +37,9 @@ This system is designed to efficiently process large datasets of GitHub Events A
 
 ## System Requirements
 
-- **Scala SDK**: 2.x.x
-- **Akka**: Version 2.x
-- **JDK**: Coretto x.x
-- **Apache Spark**: 3.x
+- **Scala SDK**: 2.12.17
+- **Akka**: Version 2.6.10
+- **JDK**: 17.0.14 Coretto
 
 ## Installation
 

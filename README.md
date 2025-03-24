@@ -21,8 +21,6 @@ This system is designed to efficiently process large datasets of GitHub Events A
 4. **Comparative Analysis**:
     - Facilitates comparison of event trends across different repositories, aggregating and visualizing the data for easy analysis.
 
-## Architecture Overview
-
 ## Acceptance Criteria (To be reached)
 
 - **Average Processing Time**:
@@ -41,7 +39,39 @@ This system is designed to efficiently process large datasets of GitHub Events A
 - **Akka**: Version 2.6.10
 - **JDK**: 17.0.14 Coretto
 
-## Installation
+## Architecture Overview
+    - **Client:**  
+      Submits queries to the system and receives results.  
+    
+    - **Coordinator Actor:**  
+      Manages query routing, aggregates results, and ensures efficient communication.  
+    
+    - **Worker Actors:**  
+      Process data locally based on the assigned partitions and return partial results.  
+    
+    - **Replication Manager:**  
+      Maintains replicas of data partitions for fault tolerance and handles failover in case of node failure.  
+    
+    - **Broadcast Service:**  
+      Efficiently distributes small, immutable datasets to all nodes to minimize data redundancy.  
+
+### System Flow
+
+1. The **Client** sends a query to the **Coordinator Actor**.  
+2. The **Coordinator** identifies which **Worker Actors** store the relevant data partitions.  
+3. Queries are sent to the appropriate **Worker Actors** for local execution.  
+4. **Worker Actors** return partial results to the **Coordinator**.  
+5. The **Coordinator** aggregates these results and sends the final output to the **Client**.
+
+### Fault Tolerance
+
+- **Replication Manager** ensures that each data partition has replicas stored across multiple nodes.  
+- In case of a node failure, queries are redirected to the replica nodes.
+
+### Diagram
+
+Here is a high-level overview of the system architecture:  
+![Architecture Overview](https://github.com/user-attachments/assets/69be574c-ac60-4876-bb2a-69a65b71aa5a)
 
 ## Query Examples
 

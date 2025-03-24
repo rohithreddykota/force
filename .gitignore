@@ -1,0 +1,33 @@
+# Scala specific
+*.class
+*.log
+*.cache
+*.project
+*.idea
+*.iml
+*.iws
+*.sbt
+*.scala
+
+# SBT specific
+target/
+lib_managed/
+src_managed/
+project/target/
+project/project/
+
+# IntelliJ IDEA specific
+.idea/
+*.iws
+*.iml
+*.ipr
+.bsp/
+.metals/
+out/
+
+# Akka specific
+akka-actor-typed/
+akka-actor-testkit-typed/
+
+# MacOS specific
+.DS_Store

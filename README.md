@@ -40,20 +40,20 @@ This system is designed to efficiently process large datasets of GitHub Events A
 - **JDK**: 17.0.14 Coretto
 
 ## Architecture Overview
-    - **Client:**  
-      Submits queries to the system and receives results.  
-    
-    - **Coordinator Actor:**  
-      Manages query routing, aggregates results, and ensures efficient communication.  
-    
-    - **Worker Actors:**  
-      Process data locally based on the assigned partitions and return partial results.  
-    
-    - **Replication Manager:**  
-      Maintains replicas of data partitions for fault tolerance and handles failover in case of node failure.  
-    
-    - **Broadcast Service:**  
-      Efficiently distributes small, immutable datasets to all nodes to minimize data redundancy.  
+- **Client:**  
+  Submits queries to the system and receives results.  
+
+- **Coordinator Actor:**  
+  Manages query routing, aggregates results, and ensures efficient communication.  
+
+- **Worker Actors:**  
+  Process data locally based on the assigned partitions and return partial results.  
+
+- **Replication Manager:**  
+  Maintains replicas of data partitions for fault tolerance and handles failover in case of node failure.  
+
+- **Broadcast Service:**  
+  Efficiently distributes small, immutable datasets to all nodes to minimize data redundancy.  
 
 ### System Flow
 

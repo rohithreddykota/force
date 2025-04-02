@@ -2,12 +2,10 @@
 *.class
 *.log
 *.cache
-*.project
 *.idea
 *.iml
 *.iws
-*.sbt
-*.scala
+
 
 # SBT specific
 target/
@@ -24,10 +22,6 @@ project/project/
 .bsp/
 .metals/
 out/
-
-# Akka specific
-akka-actor-typed/
-akka-actor-testkit-typed/
 
 # MacOS specific
 .DS_Store

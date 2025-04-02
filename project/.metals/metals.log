@@ -1,2 +1,0 @@
-2025.03.24 18:05:49 INFO  tracing is disabled for protocol LSP, to enable tracing of incoming and outgoing JSON messages create an empty file at /Users/rohithreddykota/damg/csye-7200/force/project/.metals/lsp.trace.json or /Users/rohithreddykota/Library/Caches/org.scalameta.metals/lsp.trace.json[0m
-2025.03.24 18:05:49 INFO  logging to file /Users/rohithreddykota/damg/csye-7200/.metals/metals.log[0m

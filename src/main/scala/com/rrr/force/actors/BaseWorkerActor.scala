@@ -15,11 +15,8 @@ abstract class BaseWorkerActor(val partitionId: Int) extends Actor with ActorLog
 
   override def receive: Receive = {
     case ProcessQuery(query, broadcastData) =>
+      log.info(s"Processing query on partition $partitionId with ${broadcastData.map(_.users.size).getOrElse(0)} broadcast users")
       val result = processSubquery(query, broadcastData)
       sender() ! QueryResult(result)
   }
-}
-
-object WorkerActor {
-  def props(partitionId: Int): Props = Props.empty // Concrete implementation will be provided.
 }

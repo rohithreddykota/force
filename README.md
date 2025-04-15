@@ -127,10 +127,11 @@ graph LR
     - Distributes the query and small dataset to all relevant Worker Actors.
     - Aggregates partial results received from Worker Actors and sends the final result back to the
       Data Analyst.
-- **Partition Manager Actor:** Returns the list of partition IDs based on the query.
+- **Partition Manager Actor:** Returns the list of partition IDs based on the query. Partition all the github events into different parts based on their event type.
 - **Broadcast Manager Actor:**
     - Holds or retrieves the small datasets (users, orgs).
     - Broadcasts the small dataset to Worker Actors and responds to requests from the Coordinator.
+    - Use API to get the newiest information of user or organization, and enrich/update the big dataset once they changed their information
 - **Worker Actors:**
     - Receive the query along with the small dataset.
     - Process the local partition of GitHub event data.

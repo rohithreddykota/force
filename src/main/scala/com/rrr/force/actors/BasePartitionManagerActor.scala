@@ -1,8 +1,8 @@
 package com.rrr.force.actors
 
 import akka.actor.{Actor, ActorLogging, Props}
-import com.rrr.force.models.Query
 import com.rrr.force.actors.PartitionManagerMessage._
+import com.rrr.force.models.Query
 
 /**
  * BasePartitionManagerActor defines the interface for partition management.

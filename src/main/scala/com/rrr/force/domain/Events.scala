@@ -1,3 +1,4 @@
+// src/main/scala/com/rrr/force/domain/Events.scala
 package com.rrr.force.domain
 
 import java.time.Instant
@@ -20,14 +21,23 @@ sealed trait GitHubEvent {
 }
 
 object GitHubEvent {
-  private val isoFormatter = DateTimeFormatter.ISO_INSTANT
+  private val isoFormatter: DateTimeFormatter = DateTimeFormatter.ISO_INSTANT
 
-  /** Parse an ISO‐8601 timestamp (e.g. "2025-01-01T15:00:00Z") into Instant. */
+  /**
+   * Parse an ISO‐8601 timestamp (e.g. "2025-01-01T15:00:00Z") into Instant.
+   */
   def parseInstant(ts: String): Instant =
     Instant.from(isoFormatter.parse(ts))
 }
 
-/** Supporting domain models shared across events */
+/**
+ * Represents a GitHub user in events and broadcast datasets.
+ *
+ * @param id           Unique user ID
+ * @param login        User login (key for joins)
+ * @param displayLogin Optional display username
+ * @param avatarUrl    URL to the user's avatar image
+ */
 case class User(
                  id: Long,
                  login: String,
@@ -35,29 +45,54 @@ case class User(
                  avatarUrl: String
                )
 
+/**
+ * Represents a GitHub repository referenced by events.
+ *
+ * @param id   Unique repository ID
+ * @param name Name of the repository
+ */
 case class Repository(
                        id: Long,
                        name: String
                      )
 
-/** 1. WatchEvent (user stars or unstars a repo) */
+/**
+ * WatchEvent (when a user stars/un-stars a repository).
+ *
+ * @param id        Event ID
+ * @param actor     User who performed the watch
+ * @param repo      Repository being watched
+ * @param action    Action taken (e.g. "started")
+ * @param createdAt Event timestamp
+ */
 case class WatchEvent(
                        id: String,
                        actor: User,
                        repo: Repository,
-                       action: String, // e.g. "started"
+                       action: String,
                        createdAt: Instant
                      ) extends GitHubEvent {
   override val eventType: String = "WatchEvent"
 }
 
-/** 2. CreateEvent (branch, tag, or repository creation) */
+/**
+ * CreateEvent (when a branch, tag, or repo is created).
+ *
+ * @param id           Event ID
+ * @param actor        User who created
+ * @param repo         Repository context
+ * @param ref          Optional name of branch or tag
+ * @param refType      Type of ref ("branch"|"tag"|"repository")
+ * @param masterBranch Optional master branch name
+ * @param description  Optional description text
+ * @param createdAt    Event timestamp
+ */
 case class CreateEvent(
                         id: String,
                         actor: User,
                         repo: Repository,
-                        ref: Option[String], // branch/tag name, None for repo creation
-                        refType: String, // "branch" | "tag" | "repository"
+                        ref: Option[String],
+                        refType: String,
                         masterBranch: Option[String],
                         description: Option[String],
                         createdAt: Instant
@@ -65,7 +100,15 @@ case class CreateEvent(
   override val eventType: String = "CreateEvent"
 }
 
-/** Commit details for PushEvent */
+/**
+ * Commit details for PushEvent.
+ *
+ * @param sha         Commit SHA
+ * @param authorName  Author's name
+ * @param authorEmail Author's email
+ * @param message     Commit message
+ * @param url         Commit URL
+ */
 case class Commit(
                    sha: String,
                    authorName: String,
@@ -74,14 +117,27 @@ case class Commit(
                    url: String
                  )
 
-/** 3. PushEvent (one or more commits pushed) */
+/**
+ * PushEvent (one or more commits pushed to a branch).
+ *
+ * @param id           Event ID
+ * @param actor        User who pushed
+ * @param repo         Repository where push occurred
+ * @param size         Number of commits in this push
+ * @param distinctSize Number of distinct commits
+ * @param ref          Git ref (e.g. "refs/heads/main")
+ * @param head         SHA of head commit
+ * @param before       SHA before push
+ * @param commits      Sequence of commit details
+ * @param createdAt    Event timestamp
+ */
 case class PushEvent(
                       id: String,
                       actor: User,
                       repo: Repository,
                       size: Int,
                       distinctSize: Int,
-                      ref: String, // e.g. "refs/heads/main"
+                      ref: String,
                       head: String,
                       before: String,
                       commits: Seq[Commit],
@@ -90,7 +146,15 @@ case class PushEvent(
   override val eventType: String = "PushEvent"
 }
 
-/** Issue details for IssuesEvent */
+/**
+ * Detailed information about an issue for IssuesEvent.
+ *
+ * @param number    Issue number
+ * @param title     Issue title
+ * @param state     Issue state ("open"|"closed" etc.)
+ * @param createdAt Issue creation timestamp
+ * @param updatedAt Issue last update timestamp
+ */
 case class IssueDetails(
                          number: Long,
                          title: String,
@@ -99,12 +163,21 @@ case class IssueDetails(
                          updatedAt: Instant
                        )
 
-/** 4. IssuesEvent (when an issue is opened, closed, etc.) */
+/**
+ * IssuesEvent (when an issue is opened, closed, commented, etc.).
+ *
+ * @param id        Event ID
+ * @param actor     User who triggered the issue action
+ * @param repo      Repository containing the issue
+ * @param action    Action taken ("opened", "closed" etc.)
+ * @param issue     Issue details
+ * @param createdAt Event timestamp
+ */
 case class IssuesEvent(
                         id: String,
                         actor: User,
                         repo: Repository,
-                        action: String, // e.g. "opened"
+                        action: String,
                         issue: IssueDetails,
                         createdAt: Instant
                       ) extends GitHubEvent {

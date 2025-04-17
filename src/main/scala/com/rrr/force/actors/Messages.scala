@@ -1,31 +1,32 @@
+// src/main/scala/com/rrr/force/actors/Messages.scala
 package com.rrr.force.actors
 
-import com.rrr.force.models.{BroadcastData, GitHubEvent, Query}
+import akka.actor.typed.ActorRef
+import com.rrr.force.domain.{FinalResult, PartialResult, SubqueryPlan}
+import com.rrr.force.broadcast.BroadcastData
 
-/** Coordinator Actor Messages */
-object CoordinatorMessage {
-  case class QueryRequest(query: Query, userRole: String)
+object Messages {
+  // Client → Coordinator
+  final case class QueryRequest(json: String, replyTo: ActorRef[QueryResponse])
+  sealed trait QueryResponse
+  object QueryResponse {
+    final case class Success(result: FinalResult) extends QueryResponse
+    final case class Failure(reason: String)     extends QueryResponse
+  }
 
-  case class QueryResponse(results: Seq[GitHubEvent])
-}
+  // Coordinator → PartitionManager
+  final case class PartitionRequest(replyTo: ActorRef[PartitionResponse])
+  final case class PartitionResponse(partitions: Seq[Int])
 
-/** Partition Manager Actor Messages */
-object PartitionManagerMessage {
-  case class GetPartitions(query: Query)
+  // Coordinator → BroadcastManager
+  final case class BroadcastRequest(replyTo: ActorRef[BroadcastResponse])
+  final case class BroadcastResponse(data: BroadcastData)
 
-  case class Partitions(partitionIds: Seq[Int])
-}
-
-/** Broadcast Manager Actor Messages */
-object BroadcastManagerMessage {
-  case object RequestSmallDataset
-
-  case class BroadcastSmallDataset(data: BroadcastData)
-}
-
-/** Worker Actor Messages */
-object WorkerMessage {
-  case class ProcessQuery(query: Query, broadcastData: Option[BroadcastData])
-
-  case class QueryResult(results: Seq[GitHubEvent])
+  // Coordinator → Worker
+  final case class ExecuteSubquery(
+                                    plan: SubqueryPlan,
+                                    broadcast: BroadcastData,
+                                    replyTo: ActorRef[SubqueryResult]
+                                  )
+  final case class SubqueryResult(result: PartialResult)
 }

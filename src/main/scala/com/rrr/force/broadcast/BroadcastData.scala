@@ -66,4 +66,6 @@ object BroadcastData {
 
     BroadcastData(users, orgs)
   }
+
+  val empty: BroadcastData = BroadcastData(Seq.empty, Seq.empty)
 }

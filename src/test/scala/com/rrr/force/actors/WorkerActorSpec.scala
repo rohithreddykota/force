@@ -1,66 +1,36 @@
+// src/test/scala/com/rrr/force/actors/WorkerActorSpec.scala
 package com.rrr.force.actors
 
-import akka.actor.ActorSystem
-import akka.testkit.{TestKit, TestProbe}
-import com.rrr.force.models._
-import com.rrr.force.actors.WorkerMessage._
+import akka.actor.testkit.typed.scaladsl.{ScalaTestWithActorTestKit, TestProbe}
 import org.scalatest.wordspec.AnyWordSpecLike
-import org.scalatest.BeforeAndAfterAll
-import org.scalatest.matchers.should.Matchers
-
+import com.rrr.force.actors.Messages._
+import com.rrr.force.storage.DataPartition
+import com.rrr.force.domain._
+import com.rrr.force.broadcast.BroadcastData
+import com.rrr.force.monitoring.ConsoleMonitoring
 import java.time.Instant
 
-class WorkerActorSpec
-    extends TestKit(ActorSystem("WorkerActorSpec"))
-        with AnyWordSpecLike
-        with Matchers
-        with BeforeAndAfterAll {
+class WorkerActorSpec extends ScalaTestWithActorTestKit with AnyWordSpecLike {
+  "WorkerActor" must {
+    "execute subquery and respond with PartialResult" in {
+      // Create a single PushEvent partition
+      val now = Instant.parse("2025-01-01T00:00:00Z")
+      val ev = PushEvent("1", User(1,"u",None,""), Repository(1,"r"), 1,1,"r","h","b",Seq(),now)
+      val dp = DataPartition(0, Seq(ev))
+      val probe = TestProbe[SubqueryResult]()
+      val worker = spawn(WorkerActor(dp, ConsoleMonitoring))
 
-    override def afterAll(): Unit = {
-        TestKit.shutdownActorSystem(system)
+      // Build a simple SubqueryPlan: filter eventType == "PushEvent", count
+      val ast = QueryAST(
+        filters = Seq(Filter.Eq("eventType","PushEvent")),
+        groupBy = Seq(GroupByKey.ByEventType),
+        aggregations = Seq("count"->AggOp.CountOp)
+      )
+      val plan = SubqueryPlan(LogicalPlan.FilteredPlan("GitHubEvents",ast.filters), dp.id)
+      // Execute
+      worker ! ExecuteSubquery(plan, BroadcastData.empty, probe.ref)
+      val result = probe.receiveMessage()
+      result.result.data.head("count") shouldBe 1
     }
-
-    "WorkerActor" should {
-
-        "return filtered query results" in {
-            val probe = TestProbe()
-            val user = User(1, "a1", Some("Actor One"), Some("actor1@example.com"))
-            val repo = Repository(1, "force-repo", user)
-            val now = Instant.now
-
-            val data = Seq(
-                PushEvent("e1", user, repo, PushPayload("refs/heads/main", "abc123", "def456", Seq(Commit("c1", "Fix things", "url1"))), now),
-                PushEvent("e2", user.copy(login = "a2"), repo, PushPayload("refs/heads/main", "abc123", "def456", Seq(Commit("c2", "Other", "url2"))), now)
-            )
-
-            val query = Query(actor = Some("a1"))
-            val worker = system.actorOf(WorkerActor.props(partitionId = 0, partitionData = data))
-
-            probe.send(worker, ProcessQuery(query, None))
-            val QueryResult(result) = probe.expectMsgType[QueryResult]
-            result.size shouldBe 1
-            result.head.id shouldBe "e1"
-        }
-
-        "perform enrichment with broadcast data" in {
-            val probe = TestProbe()
-            val user = User(1, "a1", Some("Old Name"), Some("actor1@example.com"))
-            val enrichedUser = User(1, "a1", Some("New Name"), Some("actor1@example.com"))
-            val repo = Repository(1, "force-repo", user)
-            val now = Instant.now
-
-            val data = Seq(
-                PushEvent("e1", user, repo, PushPayload("refs/heads/main", "abc123", "def456", Seq(Commit("c1", "Test", "url1"))), now)
-            )
-
-            val broadcast = BroadcastData(users = Seq(enrichedUser), organizations = Seq.empty)
-            val query = Query()
-
-            val worker = system.actorOf(WorkerActor.props(0, data))
-            probe.send(worker, ProcessQuery(query, Some(broadcast)))
-            val QueryResult(result) = probe.expectMsgType[QueryResult]
-
-            result.head.actor.name shouldBe Some("New Name")
-        }
-    }
+  }
 }

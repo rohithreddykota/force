@@ -8,6 +8,7 @@ Compile / doc / scalacOptions ++= Seq("-Vimplicits", "-deprecation", "-Ywarn-dea
 
 lazy val akkaVersion = "2.6.21"
 lazy val scalatestVersion = "3.1.4"
+lazy val circleVersion = "0.14.3"
 
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor"          % akkaVersion,
@@ -16,9 +17,10 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-cluster-typed"  % akkaVersion,
   "com.typesafe.akka" %% "akka-testkit"        % akkaVersion % Test,
   "org.scalatest"      %% "scalatest"           % scalatestVersion % Test,
+  "com.typesafe.akka" %% "akka-actor-testkit-typed" % akkaVersion % Test,
   "com.typesafe"       % "config"               % "1.4.2",
-  "io.circe"          %% "circe-core"           % "0.14.3",
-  "io.circe"          %% "circe-generic"        % "0.14.3",
-  "io.circe"          %% "circe-parser"         % "0.14.3"
+  "io.circe"          %% "circe-core"           % circleVersion,
+  "io.circe"          %% "circe-generic"        % circleVersion,
+  "io.circe"          %% "circe-parser"         % circleVersion
 )
 javaOptions ++= Seq("-Xms512M", "-Xmx2048M", "-XX:+CMSClassUnloadingEnabled")

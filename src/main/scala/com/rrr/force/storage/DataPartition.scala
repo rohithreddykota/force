@@ -3,8 +3,8 @@ package com.rrr.force.storage
 
 import cats.implicits.catsSyntaxApplicativeError
 import com.rrr.force.domain._
-import io.circe._
-import io.circe.parser._
+import io.circe.DecodingFailure
+import io.circe.parser.parse
 
 import scala.io.Source
 
@@ -15,8 +15,10 @@ import scala.io.Source
 case class DataPartition(id: Int, events: Seq[GitHubEvent])
 
 object DataPartition {
-  // --- Decoders (unchanged) ---
-  implicit val commitDecoder: Decoder[Commit] = Decoder.instance { c =>
+
+  // --- Domain decoders ---
+
+  implicit val commitDecoder: io.circe.Decoder[Commit] = io.circe.Decoder.instance { c =>
     for {
       sha <- c.get[String]("sha")
       author = c.downField("author")
@@ -27,7 +29,7 @@ object DataPartition {
     } yield Commit(sha, name, email, msg, url)
   }
 
-  implicit val userDecoder: Decoder[User] = Decoder.instance { c =>
+  implicit val userDecoder: io.circe.Decoder[User] = io.circe.Decoder.instance { c =>
     for {
       idVal <- c.get[Long]("id")
       login <- c.get[String]("login")
@@ -36,14 +38,14 @@ object DataPartition {
     } yield User(idVal, login, displayLogin, avatarUrl)
   }
 
-  implicit val repoDecoder: Decoder[Repository] = Decoder.instance { c =>
+  implicit val repoDecoder: io.circe.Decoder[Repository] = io.circe.Decoder.instance { c =>
     for {
       idVal <- c.get[Long]("id")
       name <- c.get[String]("name")
     } yield Repository(idVal, name)
   }
 
-  implicit val pushDecoder: Decoder[PushEvent] = Decoder.instance { c =>
+  implicit val pushDecoder: io.circe.Decoder[PushEvent] = io.circe.Decoder.instance { c =>
     for {
       idStr <- c.get[String]("id")
       actor <- c.get[User]("actor")
@@ -60,7 +62,7 @@ object DataPartition {
     } yield PushEvent(idStr, actor, repo, size, distinct, ref, head, before, commits, createdAt)
   }
 
-  implicit val watchDecoder: Decoder[WatchEvent] = Decoder.instance { c =>
+  implicit val watchDecoder: io.circe.Decoder[WatchEvent] = io.circe.Decoder.instance { c =>
     for {
       idStr <- c.get[String]("id")
       actor <- c.get[User]("actor")
@@ -71,7 +73,7 @@ object DataPartition {
     } yield WatchEvent(idStr, actor, repo, action, createdAt)
   }
 
-  implicit val createDecoder: Decoder[CreateEvent] = Decoder.instance { c =>
+  implicit val createDecoder: io.circe.Decoder[CreateEvent] = io.circe.Decoder.instance { c =>
     val pd = c.downField("payload")
     for {
       idStr <- c.get[String]("id")
@@ -86,7 +88,7 @@ object DataPartition {
     } yield CreateEvent(idStr, actor, repo, refOpt, refType, masterOpt, descOpt, createdAt)
   }
 
-  implicit val issueDetDecoder: Decoder[IssueDetails] = Decoder.instance { c =>
+  implicit val issueDetDecoder: io.circe.Decoder[IssueDetails] = io.circe.Decoder.instance { c =>
     for {
       number <- c.get[Long]("number")
       title <- c.get[String]("title")
@@ -98,7 +100,7 @@ object DataPartition {
     } yield IssueDetails(number, title, state, createdAt, updatedAt)
   }
 
-  implicit val issuesDecoder: Decoder[IssuesEvent] = Decoder.instance { c =>
+  implicit val issuesDecoder: io.circe.Decoder[IssuesEvent] = io.circe.Decoder.instance { c =>
     val pd = c.downField("payload")
     for {
       idStr <- c.get[String]("id")
@@ -111,7 +113,7 @@ object DataPartition {
     } yield IssuesEvent(idStr, actor, repo, action, issue, createdAt)
   }
 
-  implicit val eventDecoder: Decoder[GitHubEvent] = Decoder.instance { c =>
+  implicit val eventDecoder: io.circe.Decoder[GitHubEvent] = io.circe.Decoder.instance { c =>
     c.get[String]("type").flatMap {
       case "PushEvent" => pushDecoder(c)
       case "WatchEvent" => watchDecoder(c)
@@ -121,7 +123,10 @@ object DataPartition {
     }
   }
 
-  // --- NDJSON loader method ---
+  /**
+   * Load partition_<id>.json from `path` directory in NDJSON format.
+   * Each line is a standalone GitHubEvent JSON.
+   */
   def load(path: String, id: Int): DataPartition = {
     val filePath = s"$path/partition_$id.json"
     val file = new java.io.File(filePath)
@@ -130,27 +135,26 @@ object DataPartition {
 
     val source = Source.fromFile(file)(scala.io.Codec.UTF8)
     try {
-      val events: Seq[GitHubEvent] = source
+      val events = source
         .getLines()
         .zipWithIndex
         .map { case (line, idx) =>
           parse(line) match {
-            case Left(parsingError) =>
+            case Left(err) =>
               throw new RuntimeException(
-                s"JSON parse error in $filePath at line ${idx + 1}: ${parsingError.message}"
+                s"JSON parse error in $filePath at line ${idx + 1}: ${err.message}"
               )
             case Right(json) =>
               json.as[GitHubEvent] match {
-                case Left(decodingError) =>
+                case Left(decErr) =>
                   throw new RuntimeException(
-                    s"JSON decoding error in $filePath at line ${idx + 1}: ${decodingError.message}"
+                    s"JSON decode error in $filePath at line ${idx + 1}: ${decErr.message}"
                   )
-                case Right(evt) =>
-                  evt
+                case Right(evt) => evt
               }
           }
         }
-        .toSeq
+        .toList
 
       DataPartition(id, events)
     } finally {

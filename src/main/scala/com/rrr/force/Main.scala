@@ -11,6 +11,7 @@ import com.rrr.force.monitoring.ConsoleMonitoring
 import com.rrr.force.security.DefaultACLService
 import com.rrr.force.storage.DataPartition
 import com.rrr.force.utils.DefaultConfigParser
+import kamon.Kamon
 
 import scala.collection.JavaConverters._
 import scala.concurrent.Await
@@ -23,6 +24,10 @@ object Main {
     ServiceKey[ExecuteSubquery]("worker-service")
 
   def main(args: Array[String]): Unit = {
+
+    // 0. Initialize Kamon for monitoring
+    Kamon.init()
+
     // 1. Bootstrap the ActorSystem with an empty behavior that spawns all children.
     val system: ActorSystem[Unit] = ActorSystem(
       Behaviors.setup[Unit] { ctx =>
@@ -93,6 +98,7 @@ object Main {
       CoordinatedShutdown(system).run(CoordinatedShutdown.UnknownReason)
       // wait up to 30s for cleanup
       Await.result(system.whenTerminated, 30.seconds)
+      Kamon.stop()
       println("✅ DistribuQuerySystem has terminated gracefully.")
     }
 

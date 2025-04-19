@@ -28,6 +28,7 @@ libraryDependencies ++= Seq(
   "io.kamon" %% "kamon-akka" % "2.5.6",
   "io.kamon" %% "kamon-prometheus" % "2.5.6",
   "io.kamon" %% "kamon-system-metrics" % "2.5.6",
-  "io.kamon" %% "kamon-bundle" % "2.5.6"
+  "io.kamon" %% "kamon-bundle" % "2.5.6",
+  "io.kamon" %% "kamon-apm-reporter" % "2.5.6"
 )
 javaOptions ++= Seq("-Xms512M", "-Xmx2048M", "-XX:+CMSClassUnloadingEnabled")

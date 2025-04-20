@@ -53,9 +53,7 @@ object CoordinatorActor {
                   replyTo ! QueryResponse.Failure(s"unauthorized: $reason")
 
                 case Right(_) =>
-                  // ① 生成逻辑计划
                   val lp: LogicalPlan = QueryPlanner.plan(ast)
-                  // ② 按 [0 .. workerCnt‑1] 直接构造 SubqueryPlan
                   (0 until workerCnt).foreach { pid =>
                     val sp = SubqueryPlan(lp, null, pid)
                     workerRouter ! ExecuteSubquery(sp, ctx.self)
@@ -64,7 +62,6 @@ object CoordinatorActor {
           }
           Behaviors.same
 
-        // --------------- Worker 返回部分结果 ---------------
         case SubqueryResult(pr) =>
           mon.logMetric("coord.partial", 1)
           partials :+= pr

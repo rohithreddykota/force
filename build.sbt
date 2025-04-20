@@ -10,7 +10,10 @@ lazy val akkaVersion = "2.6.21"
 lazy val scalatestVersion = "3.1.4"
 lazy val circleVersion = "0.14.3"
 
+resolvers += "Akka library repository".at("https://repo.akka.io/maven")
+
 libraryDependencies ++= Seq(
+  "com.typesafe.play" %% "play-json" % "2.9.4",
   "com.typesafe.akka" %% "akka-actor"          % akkaVersion,
   "com.typesafe.akka" %% "akka-cluster"        % akkaVersion,
   "com.typesafe.akka" %% "akka-actor-typed"    % akkaVersion,
@@ -21,6 +24,7 @@ libraryDependencies ++= Seq(
   "com.typesafe"       % "config"               % "1.4.2",
   "io.circe"          %% "circe-core"           % circleVersion,
   "io.circe"          %% "circe-generic"        % circleVersion,
-  "io.circe"          %% "circe-parser"         % circleVersion
+  "io.circe"          %% "circe-parser"         % circleVersion,
+  "ch.qos.logback" % "logback-classic" % "1.2.11"
 )
-javaOptions ++= Seq("-Xms512M", "-Xmx2048M", "-XX:+CMSClassUnloadingEnabled")
+javaOptions ++= Seq("-Xmx4G", "-Xms1G", "-XX:+CMSClassUnloadingEnabled")

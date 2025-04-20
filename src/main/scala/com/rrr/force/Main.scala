@@ -1,70 +1,120 @@
 // src/main/scala/com/rrr/force/Main.scala
 package com.rrr.force
 
+import java.nio.file.Paths
+import com.rrr.force.actors.Messages.{QueryRequest, QueryResponse}
+import akka.actor.typed.ActorRef
+
+import scala.concurrent.{ExecutionContext, Future}
 import akka.actor.typed.ActorSystem
+import akka.actor.typed.scaladsl.AskPattern.{Askable, schedulerFromActorSystem}
 import akka.actor.typed.scaladsl.{Behaviors, Routers}
-import akka.actor.typed.receptionist.{Receptionist, ServiceKey}
-import com.rrr.force.actors.Messages.ExecuteSubquery
-import com.rrr.force.actors._
-import com.rrr.force.utils.DefaultConfigParser
-import com.rrr.force.security.DefaultACLService
+import akka.actor.typed.scaladsl.adapter._
+import akka.stream.scaladsl.{Balance, FileIO, GraphDSL, JsonFraming, RunnableGraph, Sink, Source}
+import akka.stream.{ClosedShape, Materializer}
+import akka.util.ByteString
+import io.circe.parser.decode
+import com.rrr.force.actors.Messages.{ExecuteSubquery, SubqueryResult}
+import com.rrr.force.actors.{BroadcastManagerActor, CoordinatorActor, PartitionManagerActor, WorkerActor}
+import com.rrr.force.domain.{GitHubDecoders, GitHubEvent, SubqueryPlan}
 import com.rrr.force.monitoring.ConsoleMonitoring
-import com.rrr.force.storage.DataPartition
+import com.rrr.force.security.DefaultACLService
+import com.rrr.force.utils.{DefaultConfigParser, MyPlanner}
+
+import scala.concurrent.duration.DurationInt
+import scala.io.StdIn
 
 object Main extends App {
-  /**
-   * Key under which all WorkerActor ExecuteSubquery handlers register.
-   */
-  val WorkerKey: ServiceKey[ExecuteSubquery] =
-    ServiceKey[ExecuteSubquery]("worker-service")
-
-  // Top‐level actor system
-  val system: ActorSystem[Unit] = ActorSystem(
+  ActorSystem[Unit](
     Behaviors.setup[Unit] { ctx =>
-      // 1. PartitionManager
-      val pm = ctx.spawn(PartitionManagerActor(), "partitionManager")
-      // 2. BroadcastManager
-      val bm = ctx.spawn(BroadcastManagerActor(), "broadcastManager")
+      val pm = ctx.spawn(PartitionManagerActor(),   "partitionManager")
+      val bm = ctx.spawn(BroadcastManagerActor(),   "broadcastManager")
+      implicit val classic = ctx.system.toClassic
+      implicit val mat     = Materializer(classic)
+      implicit val ec      = ctx.system.executionContext
 
-      // 3. Load partition IDs from config
-      val cfg        = DefaultConfigParser.config
-      val partInts   = cfg.getIntList("force.partitions")
-      val partitions = partInts.toArray.toSeq.collect { case i: java.lang.Integer => i.toInt }
+      val cfg       = DefaultConfigParser.config
+      val inputPath = cfg.getString("force.input-file")
+      val workerCnt = cfg.getInt("force.worker-count")
 
-      // 4. Spawn one WorkerActor per partition and register
-      partitions.foreach { pid =>
-        val dp        = DataPartition.load("/data/path", pid)
-        val workerRef = ctx.spawn(WorkerActor(dp, ConsoleMonitoring), s"worker-$pid")
-        // register with receptionist
-        ctx.system.receptionist ! Receptionist.register(WorkerKey, workerRef)
-      }
-
-      // 5. Create a group router that automatically discovers all workers via WorkerKey
-      val routerRef = ctx.spawn(
-        Routers.group[ExecuteSubquery](WorkerKey),
-        "worker-router"
-      )
-
-      // 6. Coordinator
-      ctx.spawn(
-        CoordinatorActor(
-          pm,
-          bm,
-          routerRef,
-          DefaultACLService,
-          ConsoleMonitoring
+      // 1. Pool Router
+      val router = ctx.spawn(
+        Routers.pool[ExecuteSubquery](workerCnt)(
+          Behaviors.setup(_ => WorkerActor(ConsoleMonitoring))
         ),
-        "coordinator"
+        "worker-pool"
       )
 
-      Behaviors.empty[Unit]
+      val coordinator: ActorRef[Any] =
+        ctx.spawn(
+          CoordinatorActor(workerCnt, router, DefaultACLService, ConsoleMonitoring),
+          "coordinator"
+        )
+
+      import GitHubDecoders._
+
+      // 3. stream and partition
+      val source: Source[GitHubEvent, _] =
+        FileIO.fromPath(Paths.get(inputPath))
+          .via(JsonFraming.objectScanner(65536))
+          .map(_.utf8String)
+          .map(json => decode[GitHubEvent](json).fold(err => throw new RuntimeException(err), identity))
+
+      val graph = RunnableGraph.fromGraph(GraphDSL.create() { implicit b =>
+        import GraphDSL.Implicits._
+        val bal = b.add(Balance[GitHubEvent](workerCnt))
+        val in  = b.add(source)
+        in ~> bal.in
+
+        for (i <- 0 until workerCnt) {
+          val sink = Sink.foreach[GitHubEvent] { evt =>
+            val logicPlan = MyPlanner.plan(evt)
+            println(f"[partition $i%2d] got event id=${evt.id}")
+            val subPlan   = SubqueryPlan(logicPlan, evt, i)
+            router ! ExecuteSubquery(subPlan, coordinator)
+          }
+          bal.out(i) ~> b.add(sink).in
+        }
+        ClosedShape
+      })
+
+      graph.run()
+
+
+      // 4) Console Loop
+      Future {
+        println("=== DistribuQuery CLI ===")
+        println("input JSON query：")
+        Iterator
+          .continually(StdIn.readLine("> "))
+          .takeWhile(line => line != null && line.trim.toLowerCase != "exit")
+          .foreach { line =>
+            if (line.nonEmpty) {
+              implicit val timeout: akka.util.Timeout = 5.seconds
+
+              implicit val scheduler: akka.actor.typed.Scheduler = ctx.system.scheduler
+
+              val replyF: Future[QueryResponse] =
+                coordinator.ask(ref => QueryRequest(line, ref))
+
+              replyF.onComplete {
+                case scala.util.Success(QueryResponse.Success(finalRes)) =>
+                  println("== Query Result ==")
+                  println(finalRes)
+                case scala.util.Success(QueryResponse.Failure(err)) =>
+                  println(s"Query failed: $err")
+                case scala.util.Failure(ex) =>
+                  println(s"Error asking coordinator: $ex")
+              }
+            }
+          }
+
+        println("CLI exiting, shutting down…")
+        ctx.system.terminate()
+      }(ec)
+
+      Behaviors.empty
     },
     "DistribuQuerySystem"
   )
-
-  // Ensure clean shutdown
-  sys.addShutdownHook {
-    system.terminate()
-    println("DistribuQuerySystem shutting down...")
-  }
 }

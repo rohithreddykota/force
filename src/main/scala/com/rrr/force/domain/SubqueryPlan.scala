@@ -8,7 +8,14 @@ package com.rrr.force.domain
  * @param plan        The logical plan fragment to execute.
  * @param partitionId The partition identifier.
  */
-final case class SubqueryPlan(
-                               plan: LogicalPlan,
-                               partitionId: Int
-                             )
+//final case class SubqueryPlan(
+//                               plan: LogicalPlan,
+//                               partitionId: Int
+//                             )
+
+case class SubqueryPlan(
+                         plan: LogicalPlan,
+                         evt:         GitHubEvent,
+                         partitionId: Int
+                       )
+

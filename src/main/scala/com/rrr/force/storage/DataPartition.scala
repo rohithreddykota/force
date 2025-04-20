@@ -134,4 +134,7 @@ object DataPartition {
     )
     DataPartition(id, events)
   }
+
+  def fromRecords(id: Int, events: Seq[GitHubEvent]): DataPartition =
+    DataPartition(id, events)
 }

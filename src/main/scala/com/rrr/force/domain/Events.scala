@@ -30,6 +30,7 @@ object GitHubEvent {
     Instant.from(isoFormatter.parse(ts))
 }
 
+
 /**
  * Represents a GitHub user in events and broadcast datasets.
  *
@@ -74,6 +75,19 @@ case class WatchEvent(
                      ) extends GitHubEvent {
   override val eventType: String = "WatchEvent"
 }
+
+final case class MemberEvent(
+                              id:         String,
+                              actor:      User,
+                              repo:       Repository,
+                              member:     User,
+                              action:     String,
+                              createdAt:  Instant,
+                              org:        Organization
+                            ) extends GitHubEvent {
+  override def eventType: String = "MemberEvent"
+}
+
 
 /**
  * CreateEvent (when a branch, tag, or repo is created).
@@ -146,6 +160,8 @@ case class PushEvent(
   override val eventType: String = "PushEvent"
 }
 
+
+
 /**
  * Detailed information about an issue for IssuesEvent.
  *
@@ -182,4 +198,7 @@ case class IssuesEvent(
                         createdAt: Instant
                       ) extends GitHubEvent {
   override val eventType: String = "IssuesEvent"
+
 }
+
+

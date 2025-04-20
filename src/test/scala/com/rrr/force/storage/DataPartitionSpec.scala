@@ -11,7 +11,7 @@ class DataPartitionSpec extends AnyFunSuite {
   test("DataPartition.load should read JSON file and parse all event types") {
     // 1. Create temp directory and file
     val tmpDir  = Files.createTempDirectory("dp-test")
-    val file    = tmpDir.resolve("partition_0.json")
+    val file    = tmpDir.resolve("src/main/data/path/partition_0.json")
 
     // 2. Sample JSON with PushEvent, WatchEvent, CreateEvent, IssuesEvent
     val nowStr  = "2025-01-01T00:00:00Z"

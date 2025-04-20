@@ -7,7 +7,7 @@ package com.rrr.force.domain
  * @param partitionId The partition identifier on which this result was computed.
  * @param data        A sequence of rows, each represented as a map from field name to value.
  */
-final case class PartialResult(
+case class PartialResult(
                                 partitionId: Int,
                                 data: Seq[Map[String, Any]]
                               )

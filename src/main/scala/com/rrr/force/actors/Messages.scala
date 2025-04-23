@@ -8,6 +8,7 @@ import com.rrr.force.broadcast.BroadcastData
 object Messages {
   // Client → Coordinator
   final case class QueryRequest(json: String, replyTo: ActorRef[QueryResponse])
+
   sealed trait QueryResponse
   object QueryResponse {
     final case class Success(result: FinalResult) extends QueryResponse
@@ -23,10 +24,15 @@ object Messages {
   final case class BroadcastResponse(data: BroadcastData)
 
   // Coordinator → Worker
+//  final case class ExecuteSubquery(
+//                                    plan: SubqueryPlan,
+//                                    broadcast: BroadcastData,
+//                                    replyTo: ActorRef[SubqueryResult]
+//                                  )
   final case class ExecuteSubquery(
-                                    plan: SubqueryPlan,
-                                    broadcast: BroadcastData,
+                                    plan:    SubqueryPlan,
                                     replyTo: ActorRef[SubqueryResult]
                                   )
   final case class SubqueryResult(result: PartialResult)
+
 }

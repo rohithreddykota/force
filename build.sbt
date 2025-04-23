@@ -10,6 +10,8 @@ lazy val akkaVersion = "2.6.21"
 lazy val scalatestVersion = "3.1.4"
 lazy val circleVersion = "0.14.3"
 
+resolvers += "Akka library repository".at("https://repo.akka.io/maven")
+
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor" % akkaVersion,
   "com.typesafe.akka" %% "akka-cluster" % akkaVersion,
@@ -31,4 +33,4 @@ libraryDependencies ++= Seq(
   "io.kamon" %% "kamon-bundle" % "2.5.6",
   "io.kamon" %% "kamon-apm-reporter" % "2.5.6"
 )
-javaOptions ++= Seq("-Xms512M", "-Xmx2048M", "-XX:+CMSClassUnloadingEnabled")
+javaOptions ++= Seq("-Xmx4G", "-Xms1G", "-XX:+CMSClassUnloadingEnabled")

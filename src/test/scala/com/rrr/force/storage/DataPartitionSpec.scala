@@ -9,10 +9,11 @@ import java.nio.file.{Files, StandardOpenOption}
 import java.time.Instant
 
 class DataPartitionSpec extends AnyFunSuite {
-  test("DataPartition.load should read NDJSON file and parse all event types") {
-    // 1. Prepare a temp directory and NDJSON file
-    val tmpDir = Files.createTempDirectory("dp-test")
-    val file   = tmpDir.resolve("partition_0.json")
+
+  test("DataPartition.load should read JSON file and parse all event types") {
+    // 1. Create temp directory and file
+    val tmpDir  = Files.createTempDirectory("dp-test")
+    val file    = tmpDir.resolve("src/main/data/path/partition_0.json")
 
     // 2. Four NDJSON lines
     val nowStr = "2025-01-01T00:00:00Z"

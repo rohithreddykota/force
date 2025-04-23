@@ -8,6 +8,11 @@ package com.rrr.force.domain
  */
 sealed trait LogicalPlan
 
+final case class FilterByType(eventType: String) extends LogicalPlan
+
+final case class ProjectActor(login: String) extends LogicalPlan
+
+
 object LogicalPlan {
   /**
    * A plan node that filters a source dataset using a sequence of filters.

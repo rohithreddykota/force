@@ -161,4 +161,7 @@ object DataPartition {
       source.close()
     }
   }
+
+  def fromRecords(id: Int, events: Seq[GitHubEvent]): DataPartition =
+    DataPartition(id, events)
 }

@@ -144,3 +144,7 @@ graph LR
 ## Query Examples
 
    
+## Metrics 
+
+View Kamon Telemetry on http://localhost:5266/#/
+View Prometheus Metrics on http://localhost:9095/metrics

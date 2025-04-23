@@ -23,6 +23,7 @@ project/.metals/
 .bsp/
 .metals/
 out/
+src/main/resources/data
 
 # MacOS specific
 .DS_Store

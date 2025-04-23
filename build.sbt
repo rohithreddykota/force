@@ -13,18 +13,24 @@ lazy val circleVersion = "0.14.3"
 resolvers += "Akka library repository".at("https://repo.akka.io/maven")
 
 libraryDependencies ++= Seq(
-  "com.typesafe.play" %% "play-json" % "2.9.4",
-  "com.typesafe.akka" %% "akka-actor"          % akkaVersion,
-  "com.typesafe.akka" %% "akka-cluster"        % akkaVersion,
-  "com.typesafe.akka" %% "akka-actor-typed"    % akkaVersion,
-  "com.typesafe.akka" %% "akka-cluster-typed"  % akkaVersion,
-  "com.typesafe.akka" %% "akka-testkit"        % akkaVersion % Test,
-  "org.scalatest"      %% "scalatest"           % scalatestVersion % Test,
+  "com.typesafe.akka" %% "akka-actor" % akkaVersion,
+  "com.typesafe.akka" %% "akka-cluster" % akkaVersion,
+  "com.typesafe.akka" %% "akka-actor-typed" % akkaVersion,
+  "com.typesafe.akka" %% "akka-cluster-typed" % akkaVersion,
+  "com.typesafe.akka" %% "akka-testkit" % akkaVersion % Test,
+  "org.scalatest" %% "scalatest" % scalatestVersion % Test,
   "com.typesafe.akka" %% "akka-actor-testkit-typed" % akkaVersion % Test,
-  "com.typesafe"       % "config"               % "1.4.2",
-  "io.circe"          %% "circe-core"           % circleVersion,
-  "io.circe"          %% "circe-generic"        % circleVersion,
-  "io.circe"          %% "circe-parser"         % circleVersion,
-  "ch.qos.logback" % "logback-classic" % "1.2.11"
+  "com.typesafe" % "config" % "1.4.2",
+  "io.circe" %% "circe-core" % circleVersion,
+  "io.circe" %% "circe-generic" % circleVersion,
+  "io.circe" %% "circe-parser" % circleVersion,
+  "ch.qos.logback" % "logback-classic" % "1.2.11",
+  "org.slf4j" % "slf4j-api" % "1.7.36",
+  "io.kamon" %% "kamon-core" % "2.5.6",
+  "io.kamon" %% "kamon-akka" % "2.5.6",
+  "io.kamon" %% "kamon-prometheus" % "2.5.6",
+  "io.kamon" %% "kamon-system-metrics" % "2.5.6",
+  "io.kamon" %% "kamon-bundle" % "2.5.6",
+  "io.kamon" %% "kamon-apm-reporter" % "2.5.6"
 )
 javaOptions ++= Seq("-Xmx4G", "-Xms1G", "-XX:+CMSClassUnloadingEnabled")

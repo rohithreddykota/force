@@ -1,4 +1,4 @@
-# F O R C E: Fault-tolerant Optimized Reliable Computational Engine
+# Akka Computational Engine
 
 # GitHub Events Distributed Processing System
 

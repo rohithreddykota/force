@@ -1,4 +1,4 @@
-# Akka Optimized Reliable Computational Engine
+# Akka Computational Engine
 
 
 # GitHub Events Distributed Processing System

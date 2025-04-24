@@ -4,18 +4,22 @@ package com.rrr.force
 import akka.actor.CoordinatedShutdown
 import akka.actor.typed.ActorSystem
 import akka.actor.typed.receptionist.{Receptionist, ServiceKey}
+import akka.actor.typed.scaladsl.AskPattern.Askable
 import akka.actor.typed.scaladsl.{Behaviors, Routers}
-import com.rrr.force.actors.Messages.ExecuteSubquery
+import akka.util.Timeout
+import com.rrr.force.actors.Messages.{ExecuteSubquery, QueryRequest, QueryResponse}
 import com.rrr.force.actors._
 import com.rrr.force.monitoring.ConsoleMonitoring
 import com.rrr.force.security.DefaultACLService
 import com.rrr.force.storage.DataPartition
+import com.rrr.force.broadcast.BroadcastData
 import com.rrr.force.utils.DefaultConfigParser
 import kamon.Kamon
 
 import scala.collection.JavaConverters._
-import scala.concurrent.Await
+import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
+import scala.io.StdIn
 
 object Main {
 
@@ -25,84 +29,91 @@ object Main {
 
   def main(args: Array[String]): Unit = {
 
-    // 0. Initialize Kamon for monitoring
     Kamon.init()
 
-    // 1. Bootstrap the ActorSystem with an empty behavior that spawns all children.
     val system: ActorSystem[Unit] = ActorSystem(
       Behaviors.setup[Unit] { ctx =>
         val log = ctx.log
         log.info("📡 Starting DistribuQuerySystem…")
 
-        // --- Safe config lookup ---
+        // safe config lookup
         val (partitions, dataDir) = try {
-          val cfg = DefaultConfigParser.config
+          val cfg      = DefaultConfigParser.config
           val partList = cfg.getIntList("force.partitions").asScala.map(_.toInt)
-          val dir = cfg.getString("force.data-dir")
-          log.info(s"Configured partitions = ${partList.mkString(", ")}")
-          log.info(s"Data directory        = $dir")
+          val dir      = cfg.getString("force.data-dir")
           (partList, dir)
         } catch {
           case ex: Exception =>
-            log.error("❌ Failed to read force.partitions or force.data-dir; defaulting to empty.", ex)
-            (Seq.empty[Int], "")
+            log.error("❌ misconfigured force.partitions or force.data-dir", ex)
+            (Seq.empty, "")
         }
 
-        // --- Spawn PartitionManager ---
+        // spawn managers
         val pmRef = ctx.spawn(PartitionManagerActor(), "partitionManager")
-        log.info("✅ partitionManager started")
-
-        // --- Spawn BroadcastManager ---
         val bmRef = ctx.spawn(BroadcastManagerActor(), "broadcastManager")
-        log.info("✅ broadcastManager started")
 
-        // --- Spawn WorkerActors and register them ---
+        // spawn & register workers
         partitions.foreach { pid =>
-          try {
-            val dp = DataPartition.load(dataDir, pid)
-            val workerRef = ctx.spawn(WorkerActor(dp, ConsoleMonitoring), s"worker-$pid")
-            ctx.system.receptionist ! Receptionist.register(WorkerKey, workerRef)
-            log.info(s"✅ worker-$pid loaded & registered")
-          } catch {
-            case ex: Exception =>
-              log.error(s"❌ Failed to load partition $pid from $dataDir", ex)
-          }
+          val dp = DataPartition.load(dataDir, pid)                             // :contentReference[oaicite:0]{index=0}&#8203;:contentReference[oaicite:1]{index=1}
+          val w  = ctx.spawn(WorkerActor(dp, ConsoleMonitoring), s"worker-$pid")
+          ctx.system.receptionist ! Receptionist.register(WorkerKey, w)
         }
 
-        // --- Create a group router for workers ---
-        val routerRef = ctx.spawn(Routers.group[ExecuteSubquery](WorkerKey), "worker-router")
-        log.info("✅ worker-router started")
+        // group router
+        val router = ctx.spawn(Routers.group[ExecuteSubquery](WorkerKey), "worker-router")
 
-        // --- Spawn CoordinatorActor ---
-        ctx.spawn(
-          CoordinatorActor(
-            pm = pmRef,
-            bm = bmRef,
-            workerRouter = routerRef,
-            acl = DefaultACLService,
-            mon = ConsoleMonitoring
-          ),
-          "coordinator"
-        )
-        log.info("✅ coordinator started")
+        // spawn coordinator and keep a ref
+        val coordinatorRef =
+          ctx.spawn(
+            CoordinatorActor(pmRef, bmRef, router, DefaultACLService, ConsoleMonitoring),
+            "coordinator"
+          )
 
-        // Keep this behavior alive
-        Behaviors.empty[Unit]
+        // ── Interactive CLI loop ─────────────────────────────────────
+        implicit val ec        = ctx.system.executionContext
+        implicit val sched     = ctx.system.scheduler
+        implicit val timeout   = Timeout(5.seconds)
+
+        Future {
+          println("=== DistribuQuery CLI ===")
+          println("Type JSON query or 'exit':")
+
+          Iterator.continually(StdIn.readLine("> "))
+            .takeWhile(line => line != null && line.trim.toLowerCase != "exit")
+            .foreach { line =>
+              if (line.trim.nonEmpty) {
+                // send the raw JSON to the coordinator
+                val replyF = coordinatorRef.ask[QueryResponse](ref => QueryRequest(line, ref))
+                replyF.onComplete {
+                  case scala.util.Success(QueryResponse.Success(fr)) =>
+                    println("✅ Result:")
+                    println(fr.data.mkString("\n"))
+
+                  case scala.util.Success(QueryResponse.Failure(reason)) =>
+                    println(s"✗ Query failed: $reason")
+
+                  case scala.util.Failure(err) =>
+                    println(s"‼ Unexpected error: ${err.getMessage}")
+                }
+              }
+            }
+
+          println("🛑 Exiting CLI, shutting down system…")
+          ctx.system.terminate()
+        }
+
+        Behaviors.empty
       },
       "DistribuQuerySystem"
     )
 
-    // 2. Install JVM shutdown hook for graceful termination
+    // graceful shutdown hook
     sys.addShutdownHook {
-      println("🛑 Shutdown signal received, initiating coordinated shutdown...")
       CoordinatedShutdown(system).run(CoordinatedShutdown.UnknownReason)
-      // wait up to 30s for cleanup
       Await.result(system.whenTerminated, 30.seconds)
       Kamon.stop()
-      println("✅ DistribuQuerySystem has terminated gracefully.")
     }
 
-    // 3. Block main thread until ActorSystem terminates
     Await.result(system.whenTerminated, Duration.Inf)
   }
 }

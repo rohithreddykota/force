@@ -24,6 +24,7 @@ project/.metals/
 .metals/
 out/
 src/main/resources/data
+src/main/resources/broadcast
 
 # MacOS specific
 .DS_Store

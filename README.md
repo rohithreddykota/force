@@ -8,6 +8,11 @@ Archive) by utilizing a distributed actor-based architecture. Built in Scala wit
 partitions and replicates the dataset across worker actors, processes it locally, and provides
 various query-based functionalities for data analysts.
 
+## Slide Deck
+
+Final Project Presentation - https://docs.google.com/presentation/d/1ZUM71UE0cWPYO9esT8dB7Osnf3Rg3xb7oUlZW3-1-oU/edit?usp=sharing
+Midterm Planning Presentation - https://docs.google.com/presentation/d/12w6GPwbI2c1EGlWtL0eL4wRlFyRGLNnlW2nYX-9oJA0/edit?usp=sharing
+
 ## Features
 
 1. **Partitioning & Replication**:
@@ -143,6 +148,9 @@ graph LR
   sizes, processing times, restarts).
 
 ## Query Examples
+```
+{"filters":[{"type":"Eq","field":"eventType","value":"PushEvent"}],"groupBy":["ByRepo"],"aggregations":[["id","CountOp"]]}
+```
 
    
 ## Metrics 

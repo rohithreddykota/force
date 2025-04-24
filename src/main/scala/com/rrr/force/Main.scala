@@ -20,11 +20,13 @@ import com.rrr.force.domain.{GitHubDecoders, GitHubEvent, SubqueryPlan}
 import com.rrr.force.monitoring.ConsoleMonitoring
 import com.rrr.force.security.DefaultACLService
 import com.rrr.force.utils.{DefaultConfigParser, MyPlanner}
+import kamon.Kamon
 
 import scala.concurrent.duration.DurationInt
 import scala.io.StdIn
 
 object Main extends App {
+  Kamon.init()
   ActorSystem[Unit](
     Behaviors.setup[Unit] { ctx =>
       val pm = ctx.spawn(PartitionManagerActor(),   "partitionManager")
